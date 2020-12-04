@@ -292,3 +292,25 @@ list($r, $g, $b) = sscanf($hex, "#%02x%02x%02x");
 echo "$hex -> $r $g $b";
 
 //==============================================================================
+ Удаление директории \ Удаление папки с файлами 
+function emptyDir($dir) {
+    if (is_dir($dir)) {
+        $scn = scandir($dir);
+        foreach ($scn as $files) {
+            if ($files !== '.') {
+                if ($files !== '..') {
+                    if (!is_dir($dir . '/' . $files)) {
+                        unlink($dir . '/' . $files);
+                    } else {
+                        emptyDir($dir . '/' . $files);
+                        rmdir($dir . '/' . $files);
+                    }
+                }
+            }
+        }
+    }
+}
+
+$dir = 'folder_for_delete';
+emptyDir($dir);
+rmdir($dir);
