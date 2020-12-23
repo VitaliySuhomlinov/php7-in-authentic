@@ -314,3 +314,181 @@ function emptyDir($dir) {
 $dir = 'folder_for_delete';
 emptyDir($dir);
 rmdir($dir);
+
+//==============================================================================
+Система логирования ошибок 
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set("highlight.default", "#0000BB");
+set_error_handler('my_error');
+register_shutdown_function('shutdown');
+
+function my_error($errno, $errstr, $errfile, $errline)
+{
+    if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR]) === true)
+        return false;
+
+    $f = fopen($errfile, "r");
+    $lines = [];
+    $i = 1;
+    while ($line = fgets($f)) {
+        $lines[$i++] = $line;
+    }
+    fclose($f);
+
+    for ($i = 10, $start = 0; $start <= 0; $i--) {
+        $start = $errline - $i;
+    }
+
+    for ($i = 10, $end = 0; $end <= 0; $i--) {
+        $end = $errline + $i;
+        if ($end <= count($lines)) {
+            break;
+        }
+        $end = 0;
+    }
+
+
+    $code = '';
+    foreach($lines as $k => $v){
+        if ($k >= $start && $k <= $end) {
+            $code .= $k . ' ' .$v;
+        }
+    }
+    $code = highlight_string($code, true);
+    $date = date('Y-m-d H:i:s');
+    $http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : null;
+    $country_code = isset($_SERVER['HTTP_GEOIP_COUNTRY_CODE']) ? $_SERVER['HTTP_GEOIP_COUNTRY_CODE'] : null;
+    $str =
+        '<div style="background-color: #4F5B93; color: #E2E4EF; padding: 12px">' .
+        '<p>Main information</p>' .
+        PHP_EOL . '<br>' .
+        'Date: ' . $date .
+        PHP_EOL . '<br>' .
+        'Error number: ' . $errno .
+        PHP_EOL . '<br>' .
+        'Error text: ' . $errstr .
+        PHP_EOL . '<br>' .
+        'File: ' . $errfile .
+        PHP_EOL . '<br>' .
+        'Line number: ' . $errline .
+        PHP_EOL . '<br>' .
+        '</div>' .
+
+        '<div style="background-color: #F2F2F2; padding: 12px;">' .
+        '<p>SERVER variable</p>' .
+        'Browser: ' . $_SERVER['HTTP_USER_AGENT'] .
+        PHP_EOL . '<br>' .
+        'Country code: ' . $country_code .
+        PHP_EOL . '<br>' .
+        'Method: ' .  $_SERVER['REQUEST_METHOD'] .
+        PHP_EOL . '<br>' .
+        'Page refferer: ' . $http_referer .
+        PHP_EOL . '<br>' .
+        '</div>' .
+
+        '<div style="background-color: #ffffff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); padding: 12px">' .
+        PHP_EOL . '<br>' .
+        '<p>CODE</p>' .
+        PHP_EOL . '<br>' .
+        $code .
+        PHP_EOL . '<br>' .
+        PHP_EOL . '<br>' .
+        '</div>' .
+        PHP_EOL . '<br>' .
+        '<hr>' .
+        PHP_EOL . '<br>';
+
+    file_put_contents('log.html', $str, FILE_APPEND);
+    return true;
+}
+
+function shutdown()
+{
+    $error = error_get_last();
+    $f = fopen($error['file'], "r");
+    $lines = [];
+    $i = 1;
+    while ($line = fgets($f)) {
+        $lines[$i++] = $line;
+    }
+    fclose($f);
+
+    for ($i = 10, $start = 0; $start <= 0; $i--) {
+        $start = $error['line'] - $i;
+    }
+
+    for ($i = 10, $end = 0; $end <= 0; $i--) {
+        $end = $error['line'] + $i;
+        if ($end <= count($lines)) {
+            break;
+        }
+        $end = 0;
+    }
+
+
+    $code = '';
+    foreach($lines as $k => $v){
+        if ($k >= $start && $k <= $end) {
+            $code .= $k . ' ' .$v;
+        }
+    }
+    $code = highlight_string($code, true);
+    $date = date('Y-m-d H:i:s');
+    $http_referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : null;
+    $country_code = isset($_SERVER['HTTP_GEOIP_COUNTRY_CODE']) ? $_SERVER['HTTP_GEOIP_COUNTRY_CODE'] : null;
+    $str =
+        '<div style="background-color: #4F5B93; color: #E2E4EF; padding: 12px">' .
+        '<p>Main information</p>' .
+        'Date: ' . $date .
+        PHP_EOL . '<br>' .
+        'Error number: ' . $error['type'] .
+        PHP_EOL . '<br>' .
+        'Error text: ' . $error['message'] .
+        PHP_EOL . '<br>' .
+        'File: ' . $error['file'] .
+        PHP_EOL . '<br>' .
+        'Line number: ' . $error['line'] .
+        PHP_EOL . '<br>' .
+        '</div>' .
+
+        '<div style="background-color: #F2F2F2; padding: 12px;">' .
+        '<p>SERVER variable</p>' .
+        'Browser: ' . $_SERVER['HTTP_USER_AGENT'] .
+        PHP_EOL . '<br>' .
+        'Country code: ' . $country_code .
+        PHP_EOL . '<br>' .
+        'Method: ' .  $_SERVER['REQUEST_METHOD'] .
+        PHP_EOL . '<br>' .
+        'Page refferer: ' . $http_referer .
+        PHP_EOL . '<br>' .
+        '</div>' .
+
+        '<div style="background-color: #ffffff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); padding: 12px">' .
+        PHP_EOL . '<br>' .
+        '<p>CODE</p>' .
+        PHP_EOL . '<br>' .
+        $code .
+        PHP_EOL . '<br>' .
+        PHP_EOL . '<br>' .
+        '</div>' .
+        PHP_EOL . '<br>' .
+        '<hr>' .
+        PHP_EOL . '<br>';
+
+    if (
+        // если в коде была допущена ошибка
+        is_array($error) &&
+        // и это одна из фатальных ошибок
+        in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])
+    ) {
+        // очищаем буфер вывода (о нём мы ещё поговорим в последующих статьях)
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        // выводим описание проблемы
+        echo 'Сервер находится на техническом обслуживании, зайдите позже';
+        //Записываем данные в файл
+        file_put_contents('log.html', $str, FILE_APPEND);
+    }
+}
